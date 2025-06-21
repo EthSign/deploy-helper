@@ -1,10 +1,19 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.13;
 
-contract Counter {
+import { IVersionable } from "./interfaces/IVersionable.sol";
+import { Ownable } from "solady/auth/Ownable.sol";
+
+contract Counter is IVersionable, Ownable {
+    string public constant override version = "1.0.0-Counter";
+    
     uint256 public number;
 
-    function setNumber(uint256 newNumber) public {
+    constructor() {
+        _initializeOwner(msg.sender);
+    }
+
+    function setNumber(uint256 newNumber) public onlyOwner {
         number = newNumber;
     }
 

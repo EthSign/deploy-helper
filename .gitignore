@@ -12,3 +12,9 @@ docs/
 
 # Dotenv file
 .env
+
+# Deployment outputs
+deployments/
+
+# Node modules (if any)
+node_modules/
