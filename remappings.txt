@@ -1,4 +1,0 @@
-deploy-helper/=src/
-forge-std/=lib/forge-std/src/
-createx-forge/=lib/createx-forge/
-solady/=lib/solady/src/

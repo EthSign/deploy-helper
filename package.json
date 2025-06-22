@@ -2,7 +2,7 @@
   "name": "@deploy-helper/foundry",
   "version": "0.1.0",
   "description": "A Foundry package for deterministic contract deployments with version tracking",
-  "author": "Your Name",
+  "author": "Jack Xu, Leo Li",
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",

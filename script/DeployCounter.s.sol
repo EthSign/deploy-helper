@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import { DeployHelper } from "./DeployHelper.sol";
 import { Counter } from "../src/Counter.sol";
-import { console } from "forge-std/console.sol";
+import { console } from "../lib/forge-std/src/console.sol";
 
 contract DeployCounter is DeployHelper {
     function setUp() public override {

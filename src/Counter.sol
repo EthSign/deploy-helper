@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { IVersionable } from "./interfaces/IVersionable.sol";
-import { Ownable } from "solady/auth/Ownable.sol";
+import { Ownable } from "../lib/solady/src/auth/Ownable.sol";
 
 contract Counter is IVersionable, Ownable {
     string public constant override version = "1.0.0-Counter";
