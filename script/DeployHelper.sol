@@ -48,6 +48,17 @@ abstract contract DeployHelper is CreateXScript {
      */
     function _setUp(string memory subfolder) internal withCreateX {
         unixTime = vm.toString(vm.unixTime());
+
+        // Create necessary directories
+        string[] memory inputs = new string[](3);
+        inputs[0] = "mkdir";
+        inputs[1] = "-p";
+        inputs[2] = string.concat(vm.projectRoot(), "/deployments/", subfolder);
+        vm.ffi(inputs);
+
+        inputs[2] = string.concat(vm.projectRoot(), "/deployments/verification/standard-json-inputs");
+        vm.ffi(inputs);
+
         jsonPath = string.concat(
             vm.projectRoot(),
             "/deployments/",
@@ -110,8 +121,13 @@ abstract contract DeployHelper is CreateXScript {
      * @dev Should be called at the end of deployment scripts
      */
     function _afterAll() internal {
-        vm.writeJson(finalJson, jsonPath);
-        vm.writeJson(finalJsonLatest, jsonPathLatest);
+        if (bytes(finalJson).length > 0) {
+            vm.writeJson(finalJson, jsonPath);
+        }
+
+        if (bytes(finalJsonLatest).length > 0) {
+            vm.writeJson(finalJsonLatest, jsonPathLatest);
+        }
     }
 
     /**

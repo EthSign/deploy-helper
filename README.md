@@ -215,4 +215,4 @@ event OwnershipTransferred(address indexed contractAddress, address indexed newO
 
 ## License
 
-AGPL-3.0
+MIT
