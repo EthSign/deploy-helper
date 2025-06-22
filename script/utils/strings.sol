@@ -478,12 +478,7 @@ library strings {
 
     // Returns the memory address of the first byte of the first occurrence of
     // `needle` in `self`, or the first byte after `self` if not found.
-    function findPtr(
-        uint256 selflen,
-        uint256 selfptr,
-        uint256 needlelen,
-        uint256 needleptr
-    )
+    function findPtr(uint256 selflen, uint256 selfptr, uint256 needlelen, uint256 needleptr)
         private
         pure
         returns (uint256)
@@ -543,12 +538,7 @@ library strings {
 
     // Returns the memory address of the first byte after the last occurrence of
     // `needle` in `self`, or the address of `self` if not found.
-    function rfindPtr(
-        uint256 selflen,
-        uint256 selfptr,
-        uint256 needlelen,
-        uint256 needleptr
-    )
+    function rfindPtr(uint256 selflen, uint256 selfptr, uint256 needlelen, uint256 needleptr)
         private
         pure
         returns (uint256)

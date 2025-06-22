@@ -15,12 +15,12 @@ A reusable Foundry deployment helper that provides deterministic CREATE3 deploym
 Add to your Foundry project:
 
 ```bash
-forge install YOUR_USERNAME/YOUR_REPO_NAME
+forge install EthSign/deploy-helper
 ```
 
 Add to your `remappings.txt`:
 ```
-deploy-helper/=lib/deploy-helper-forge/src/
+deploy-helper/=lib/deploy-helper-forge/script/
 ```
 
 ## Quick Start

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.13;
 
-import { Script, console } from "../lib/forge-std/src/Script.sol";
-import { stdJson } from "../lib/forge-std/src/StdJson.sol";
-import { CreateXScript } from "../lib/createx-forge/script/CreateXScript.sol";
-import { IVersionable } from "../src/interfaces/IVersionable.sol";
-import { strings } from "./utils/strings.sol";
-import { Ownable } from "../lib/solady/src/auth/Ownable.sol";
+import {Script, console} from "../lib/forge-std/src/Script.sol";
+import {stdJson} from "../lib/forge-std/src/StdJson.sol";
+import {CreateXScript} from "../lib/createx-forge/script/CreateXScript.sol";
+import {IVersionable} from "../src/interfaces/IVersionable.sol";
+import {strings} from "./utils/strings.sol";
+import {Ownable} from "../lib/solady/src/auth/Ownable.sol";
 
 /**
  * @title DeployHelper
@@ -25,15 +25,15 @@ abstract contract DeployHelper is CreateXScript {
     string public finalJson;
     string public finalJsonLatest;
     string public unixTime;
-    
+
     // Production configuration
     address public productionOwner;
     mapping(uint256 => bool) public isProductionChain;
-    
+
     // Events
     event ContractDeployed(string indexed version, address indexed contractAddress, string contractName);
     event OwnershipTransferred(address indexed contractAddress, address indexed newOwner);
-    
+
     /**
      * @notice Must be overridden by implementing contracts
      * @dev Should call _setUp(string) with the deployment subfolder name
@@ -65,7 +65,7 @@ abstract contract DeployHelper is CreateXScript {
         jsonObjKeyDiff = "deploymentObjKeyDiff";
         jsonObjKeyAll = "deploymentObjKeyAll";
     }
-    
+
     /**
      * @notice Configure production settings for mainnet deployments
      * @param _productionOwner Address to transfer ownership to on production chains
@@ -90,7 +90,7 @@ abstract contract DeployHelper is CreateXScript {
         }
         return deployedAddress;
     }
-    
+
     /**
      * @notice Deploy a contract with custom salt suffix
      * @param creationCode The contract creation bytecode
@@ -123,21 +123,25 @@ abstract contract DeployHelper is CreateXScript {
             console.log(unicode"✅[INFO] Testnet detected, skipping owner reassignment.");
             return;
         }
-        
+
         if (productionOwner == address(0)) {
             console.log(unicode"⚠️[WARN] Production chain detected but no production owner configured.");
             return;
         }
-        
+
         if (Ownable(instance).owner() == productionOwner) {
-            console.log(unicode"✅[INFO] Owner already set to %s for %s, skipping reassignment.", productionOwner, instance);
+            console.log(
+                unicode"✅[INFO] Owner already set to %s for %s, skipping reassignment.", productionOwner, instance
+            );
             return;
         }
-        
+
         vm.broadcast();
         Ownable(instance).transferOwnership(productionOwner);
-        console.log(unicode"✅[INFO] Production chain detected, owner reassigned to %s for %s.", productionOwner, instance);
-        
+        console.log(
+            unicode"✅[INFO] Production chain detected, owner reassigned to %s for %s.", productionOwner, instance
+        );
+
         emit OwnershipTransferred(instance, productionOwner);
     }
 
@@ -151,7 +155,7 @@ abstract contract DeployHelper is CreateXScript {
         bytes11 randomSeed = bytes11(keccak256(abi.encode(version)));
         return bytes32(abi.encodePacked(msg.sender, crosschainProtectionFlag, randomSeed));
     }
-    
+
     /**
      * @notice Generate salt with custom suffix
      * @param version The version string from the contract
@@ -174,27 +178,27 @@ abstract contract DeployHelper is CreateXScript {
         (string memory name, string memory versionAndVariant) = _getNameVersionAndVariant(creationCode);
         address computed = computeCreate3Address(_getSalt(versionAndVariant), msg.sender);
         finalJsonLatest = vm.serializeAddress(jsonObjKeyAll, versionAndVariant, computed);
-        
+
         if (computed.code.length != 0) {
             console.log(unicode"⚠️[WARN] Skipping deployment, %s already deployed at %s", versionAndVariant, computed);
             return (false, computed);
         }
-        
+
         vm.startBroadcast();
         address deployed = create3(_getSalt(versionAndVariant), creationCode);
         vm.stopBroadcast();
-        
+
         require(computed == deployed, "Computed address mismatch");
         console.log(unicode"✅[INFO] %s deployed at %s", versionAndVariant, computed);
-        
+
         finalJson = vm.serializeAddress(jsonObjKeyDiff, versionAndVariant, computed);
         _saveContractToStandardJsonInput(name, versionAndVariant);
-        
+
         emit ContractDeployed(versionAndVariant, deployed, name);
-        
+
         return (true, deployed);
     }
-    
+
     /**
      * @notice Internal deployment function with custom salt
      * @param creationCode The contract creation bytecode
@@ -207,24 +211,24 @@ abstract contract DeployHelper is CreateXScript {
         string memory saltKey = string.concat(versionAndVariant, "-", saltSuffix);
         address computed = computeCreate3Address(_getSaltWithSuffix(versionAndVariant, saltSuffix), msg.sender);
         finalJsonLatest = vm.serializeAddress(jsonObjKeyAll, saltKey, computed);
-        
+
         if (computed.code.length != 0) {
             console.log(unicode"⚠️[WARN] Skipping deployment, %s already deployed at %s", saltKey, computed);
             return (false, computed);
         }
-        
+
         vm.startBroadcast();
         address deployed = create3(_getSaltWithSuffix(versionAndVariant, saltSuffix), creationCode);
         vm.stopBroadcast();
-        
+
         require(computed == deployed, "Computed address mismatch");
         console.log(unicode"✅[INFO] %s deployed at %s", saltKey, computed);
-        
+
         finalJson = vm.serializeAddress(jsonObjKeyDiff, saltKey, computed);
         _saveContractToStandardJsonInput(name, saltKey);
-        
+
         emit ContractDeployed(saltKey, deployed, name);
-        
+
         return (true, deployed);
     }
 
@@ -243,16 +247,16 @@ abstract contract DeployHelper is CreateXScript {
             mockDeploymentAddress := create(0, add(creationCode, 0x20), mload(creationCode))
         }
         versionAndVariant = IVersionable(mockDeploymentAddress).version();
-        
+
         // Parse version format: "x.x.x-ContractName"
         strings.slice memory slice = versionAndVariant.toSlice();
         strings.slice memory delimiter = "-".toSlice();
         string[] memory parts = new string[](slice.count(delimiter) + 1);
-        
+
         for (uint256 i = 0; i < parts.length; i++) {
             parts[i] = slice.split(delimiter).toString();
         }
-        
+
         require(parts.length >= 2, "Invalid version format. Expected: x.x.x-ContractName");
         name = parts[1];
     }
@@ -272,10 +276,7 @@ abstract contract DeployHelper is CreateXScript {
      * @param contractName The contract name
      * @param versionAndVariant The version and variant string
      */
-    function _saveContractToStandardJsonInput(
-        string memory contractName,
-        string memory versionAndVariant
-    ) private {
+    function _saveContractToStandardJsonInput(string memory contractName, string memory versionAndVariant) private {
         string[] memory inputs = new string[](5);
         inputs[0] = "forge";
         inputs[1] = "verify-contract";
@@ -287,7 +288,7 @@ abstract contract DeployHelper is CreateXScript {
         string memory outputPath = string.concat(
             vm.projectRoot(), "/deployments/verification/standard-json-inputs/", versionAndVariant, ".json"
         );
-        
+
         if (vm.isFile(outputPath)) {
             console.log(
                 unicode"⏳[INFO] Verification file for %s already exists, checking for changes...", versionAndVariant
@@ -313,7 +314,7 @@ abstract contract DeployHelper is CreateXScript {
                 );
             }
         }
-        
+
         console.log(unicode"✅[INFO] Standard JSON input for %s saved", versionAndVariant);
         vm.writeFile(outputPath, output);
     }
