@@ -15,7 +15,7 @@ A reusable Foundry deployment helper that provides deterministic CREATE3 deploym
 Add to your Foundry project:
 
 ```bash
-forge install your-org/deploy-helper-forge
+forge install YOUR_USERNAME/YOUR_REPO_NAME
 ```
 
 Add to your `remappings.txt`:
