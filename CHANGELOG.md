@@ -1,4 +1,4 @@
-## [0.1.1] - 2025-06-23
+## [1.0.1] - 2025-06-23
 A lot of minor improvements
 ### Added
 - CHANGELOG.md
@@ -9,7 +9,7 @@ A lot of minor improvements
 - Removed example code. Please refer to [deploy-helper-starter](https://github.com/EthSign/deploy-helper-starter)
 ### Fixed
 
-## [0.1.0] - 2025-06-22
+## [1.0.0] - 2025-06-22
 First draft of the package
 ### Added
 ### Changed

@@ -1,0 +1,4 @@
+ solady/=lib/solady/src
+ interfaces/=src/interfaces
+ forge-std/=lib/forge-std/src/
+ createx-forge=lib/createx-forge/
