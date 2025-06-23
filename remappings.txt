@@ -1,3 +1,2 @@
  solady/=lib/solady/src
  forge-std/=lib/forge-std/src/
- createx-forge=lib/createx-forge/
