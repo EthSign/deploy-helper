@@ -14,7 +14,7 @@ import {Ownable} from "solady/auth/Ownable.sol";
  * @dev Assumes all contracts implement IVersionable with format "x.x.x-ContractName"
  *      Automatically saves deployment info and verification JSONs
  */
-abstract contract DeployHelper is CreateXScript {
+abstract contract DeployHelper is CreateXScript, IVersionable {
     using strings for *;
 
     // Deployment tracking
@@ -163,24 +163,24 @@ abstract contract DeployHelper is CreateXScript {
 
     /**
      * @notice Generate salt for CREATE3 deployment
-     * @param version The version string from the contract
+     * @param versionString The version string from the contract
      * @return salt The generated salt
      */
-    function _getSalt(string memory version) internal view returns (bytes32) {
+    function _getSalt(string memory versionString) internal view returns (bytes32) {
         bytes1 crosschainProtectionFlag = bytes1(0x00); // 0: allow crosschain, 1: disallow crosschain
-        bytes11 randomSeed = bytes11(keccak256(abi.encode(version)));
+        bytes11 randomSeed = bytes11(keccak256(abi.encode(versionString)));
         return bytes32(abi.encodePacked(msg.sender, crosschainProtectionFlag, randomSeed));
     }
 
     /**
      * @notice Generate salt with custom suffix
-     * @param version The version string from the contract
+     * @param versionString The version string from the contract
      * @param suffix Custom suffix for the salt
      * @return salt The generated salt
      */
-    function _getSaltWithSuffix(string memory version, string memory suffix) internal view returns (bytes32) {
+    function _getSaltWithSuffix(string memory versionString, string memory suffix) internal view returns (bytes32) {
         bytes1 crosschainProtectionFlag = bytes1(0x00);
-        bytes11 randomSeed = bytes11(keccak256(abi.encode(version, suffix)));
+        bytes11 randomSeed = bytes11(keccak256(abi.encode(versionString, suffix)));
         return bytes32(abi.encodePacked(msg.sender, crosschainProtectionFlag, randomSeed));
     }
 
@@ -333,5 +333,9 @@ abstract contract DeployHelper is CreateXScript {
 
         console.log(unicode"✅[INFO] Standard JSON input for %s saved", versionAndVariant);
         vm.writeFile(outputPath, output);
+    }
+
+    function version() external pure override returns (string memory) {
+        return "1.0.1-DeployHelper";
     }
 }

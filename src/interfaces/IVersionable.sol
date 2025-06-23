@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
 interface IVersionable {
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
 }
