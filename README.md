@@ -23,6 +23,16 @@ Add to your `remappings.txt`:
 deploy-helper/=lib/deploy-helper/script/
 ```
 
+Ensure your `foundry.toml` includes the required permissions:
+
+```toml
+fs_permissions = [
+    { access = "read-write", path = "./deployments" },
+    { access = "read", path = "./" }
+]
+ffi = true
+```
+
 ## Quick Start
 
 ### 1. Contract Implementation
@@ -174,18 +184,6 @@ productionChainIds[2] = 56;   // BSC
 productionChainIds[3] = 43114; // Avalanche
 
 _configureProduction(productionOwner, productionChainIds);
-```
-
-### File System Permissions
-
-Ensure your `foundry.toml` includes the required permissions:
-
-```toml
-fs_permissions = [
-    { access = "read-write", path = "./deployments" },
-    { access = "read", path = "./" }
-]
-ffi = true
 ```
 
 ## Version Format Requirements
