@@ -70,7 +70,7 @@ contract DeployMyContract is DeployHelper {
     function run() public {
         // Deploy contract using CREATE3
         MyContract myContract = MyContract(
-            deploy(type(MyContract).creationCode)
+            _deploy(type(MyContract).creationCode)
         );
         
         // Check and set owner for production chains
@@ -109,12 +109,12 @@ For deploying multiple instances of the same contract:
 function run() public {
     // Deploy first instance
     MyContract instance1 = MyContract(
-        deploy(type(MyContract).creationCode)
+        _deploy(type(MyContract).creationCode)
     );
     
     // Deploy second instance with custom salt
     MyContract instance2 = MyContract(
-        deployWithSalt(type(MyContract).creationCode, "instance2")
+        _deployWithSalt_(type(MyContract).creationCode, "instance2")
     );
 }
 ```
@@ -124,9 +124,9 @@ function run() public {
 ```solidity
 function run() public {
     // Deploy contracts in sequence
-    address tokenAddress = deploy(type(MyToken).creationCode);
-    address vaultAddress = deploy(type(MyVault).creationCode);
-    address factoryAddress = deploy(type(MyFactory).creationCode);
+    address tokenAddress = _deploy(type(MyToken).creationCode);
+    address vaultAddress = _deploy(type(MyVault).creationCode);
+    address factoryAddress = _deploy(type(MyFactory).creationCode);
     
     // Initialize contracts if needed
     vm.startBroadcast();
