@@ -20,7 +20,7 @@ forge install EthSign/deploy-helper
 
 Add to your `remappings.txt`:
 ```
-deploy-helper/=lib/deploy-helper-forge/script/
+deploy-helper/=lib/deploy-helper/script/
 ```
 
 ## Quick Start
