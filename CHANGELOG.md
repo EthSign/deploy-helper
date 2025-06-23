@@ -6,6 +6,7 @@ A lot of minor improvements
 ### Changed
 - Improved function naming. Now all internal functions start with _
 - Introduced remapping to avoid "hardlinking"
+- Directly copyied CreateX files into ./script for easier setup
 - Removed example code. Please refer to [deploy-helper-starter](https://github.com/EthSign/deploy-helper-starter)
 ### Fixed
 
