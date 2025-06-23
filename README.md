@@ -207,6 +207,9 @@ event ContractDeployed(string indexed version, address indexed contractAddress, 
 event OwnershipTransferred(address indexed contractAddress, address indexed newOwner);
 ```
 
+## Starter Repo
+Please refer to [deploy-helper-starter](https://github.com/EthSign/deploy-helper-starter)
+
 ## Dependencies
 
 - [forge-std](https://github.com/foundry-rs/forge-std)

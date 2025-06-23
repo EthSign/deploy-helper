@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {Script, console} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
-import {IVersionable} from "interfaces/IVersionable.sol";
+import {IVersionable} from "./interfaces/IVersionable.sol";
 import {strings} from "./utils/strings.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 
