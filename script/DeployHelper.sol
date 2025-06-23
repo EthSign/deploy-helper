@@ -94,8 +94,8 @@ abstract contract DeployHelper is CreateXScript {
      * @param creationCode The contract creation bytecode
      * @return deployed The deployed contract address
      */
-    function deploy(bytes memory creationCode) internal returns (address deployed) {
-        (bool didDeploy, address deployedAddress) = _deploy(creationCode);
+    function _deploy(bytes memory creationCode) internal returns (address deployed) {
+        (bool didDeploy, address deployedAddress) = __deploy(creationCode);
         if (didDeploy) {
             // Contract was newly deployed
         }
@@ -108,8 +108,8 @@ abstract contract DeployHelper is CreateXScript {
      * @param saltSuffix Custom suffix for the salt
      * @return deployed The deployed contract address
      */
-    function deployWithSalt(bytes memory creationCode, string memory saltSuffix) internal returns (address deployed) {
-        (bool didDeploy, address deployedAddress) = _deployWithSalt(creationCode, saltSuffix);
+    function _deployWithSalt(bytes memory creationCode, string memory saltSuffix) internal returns (address deployed) {
+        (bool didDeploy, address deployedAddress) = __deployWithSalt(creationCode, saltSuffix);
         if (didDeploy) {
             // Contract was newly deployed
         }
@@ -190,7 +190,7 @@ abstract contract DeployHelper is CreateXScript {
      * @return didDeploy Whether the contract was newly deployed
      * @return deployed The deployed contract address
      */
-    function _deploy(bytes memory creationCode) private returns (bool, address) {
+    function __deploy(bytes memory creationCode) private returns (bool, address) {
         (string memory name, string memory versionAndVariant) = _getNameVersionAndVariant(creationCode);
         address computed = computeCreate3Address(_getSalt(versionAndVariant), msg.sender);
         finalJsonLatest = vm.serializeAddress(jsonObjKeyAll, versionAndVariant, computed);
@@ -222,7 +222,7 @@ abstract contract DeployHelper is CreateXScript {
      * @return didDeploy Whether the contract was newly deployed
      * @return deployed The deployed contract address
      */
-    function _deployWithSalt(bytes memory creationCode, string memory saltSuffix) private returns (bool, address) {
+    function __deployWithSalt(bytes memory creationCode, string memory saltSuffix) private returns (bool, address) {
         (string memory name, string memory versionAndVariant) = _getNameVersionAndVariant(creationCode);
         string memory saltKey = string.concat(versionAndVariant, "-", saltSuffix);
         address computed = computeCreate3Address(_getSaltWithSuffix(versionAndVariant, saltSuffix), msg.sender);
