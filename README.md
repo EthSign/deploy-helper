@@ -213,9 +213,8 @@ Please refer to [deploy-helper-starter](https://github.com/EthSign/deploy-helper
 ## Dependencies
 
 - [forge-std](https://github.com/foundry-rs/forge-std)
-- [createx-forge](https://github.com/radeksvarz/createx-forge) (included in script/CreateX/)
-- [solady](https://github.com/Vectorized/solady) (for Ownable)
-
+- [createx-forge](https://github.com/radeksvarz/createx-forge) (already included in script/CreateX/)
+- [solady](https://github.com/Vectorized/solady) 
 ## License
 
 MIT
