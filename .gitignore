@@ -20,3 +20,7 @@ node_modules/
 # src & test script
 src/
 script/Counter.s.sol
+
+# remapping & lib
+lib/
+remappings.txt
