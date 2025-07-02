@@ -8,6 +8,9 @@ A reusable Foundry deployment helper that provides deterministic CREATE3 deploym
 - **Automatic Tracking**: Saves deployment info and verification JSONs
 - **Version Management**: Built-in support for `x.x.x-ContractName` versioning
 - **Production Safety**: Automatic owner management for mainnet deployments
+- **Environment Configuration**: Read deployment settings from .env file
+- **Deployment Verification**: Pre-deployment checks to prevent accidental deployments with changed code
+- **Force Deploy Option**: Override verification checks when needed during development
 - **Modular Design**: Easy to integrate into any Foundry project
 
 ## Installation
@@ -35,7 +38,26 @@ ffi = true
 
 ## Quick Start
 
-### 1. Contract Implementation
+### 1. Configuration
+
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PROD_OWNER` | Address to receive ownership on mainnet deployments | `0x1234...` |
+| `MAINNET_CHAIN_IDS` | Comma-separated list of production chain IDs | `1,56,137,42161` |
+| `FORCE_DEPLOY` | Override verification checks (use with caution) | `false` |
+
+### Deployment Verification
+
+DeployHelper performs pre-deployment verification to ensure contract code hasn't changed unexpectedly:
+
+1. **Normal flow**: If the contract code changes, deployment will be aborted with an error
+2. **Force deploy**: Set `FORCE_DEPLOY=true` to proceed anyway (saves verification with timestamp)
+
+This prevents accidental deployments when contract code has been modified but version hasn't been updated.
+
+### 2. Contract Implementation
 
 Ensure your contracts implement `IVersionable` with the format `x.x.x-ContractName`:
 
@@ -52,7 +74,7 @@ contract MyContract is IVersionable {
 }
 ```
 
-### 2. Create Deployment Script
+### 3. Create Deployment Script
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -65,16 +87,8 @@ import { console } from "forge-std/console.sol";
 contract DeployMyContract is DeployHelper {
     function setUp() public override {
         // Set up with "myproject" as the deployment subfolder
+        // This will automatically read PROD_OWNER, MAINNET_CHAIN_IDS, and FORCE_DEPLOY from .env
         _setUp("myproject");
-        
-        // Configure production settings
-        address productionOwner = 0x1234567890123456789012345678901234567890;
-        uint256[] memory mainnetChainIds = new uint256[](3);
-        mainnetChainIds[0] = 1;   // Ethereum mainnet
-        mainnetChainIds[1] = 137; // Polygon mainnet
-        mainnetChainIds[2] = 56;  // BSC mainnet
-        
-        _configureProduction(productionOwner, mainnetChainIds);
     }
     
     function run() public {
@@ -96,7 +110,7 @@ contract DeployMyContract is DeployHelper {
 }
 ```
 
-### 3. Run Deployment
+### 4. Run Deployment
 
 ```bash
 # Deploy to local network
@@ -159,31 +173,14 @@ After deployment, your project will have:
 
 ```
 deployments/
-├── myproject/              # Your deployment subfolder
-│   ├── 1-latest.json      # Latest mainnet deployments
-│   ├── 1-user-timestamp.json  # Specific deployment record
-│   ├── 11155111-latest.json   # Latest Sepolia deployments
-│   └── ...
-└── verification/
-    └── standard-json-inputs/
+└── myproject/                          # Your deployment subfolder
+    ├── 1-latest.json                  # Latest mainnet deployments
+    ├── 1-user-timestamp.json          # Specific deployment record
+    ├── 11155111-latest.json           # Latest Sepolia deployments
+    └── standard-json-inputs/          # Verification JSON files
         ├── 1.0.0-MyContract.json
-        └── ...
-```
-
-## Configuration
-
-### Production Chains
-
-Configure which chains should trigger production owner transfers:
-
-```solidity
-uint256[] memory productionChainIds = new uint256[](4);
-productionChainIds[0] = 1;    // Ethereum
-productionChainIds[1] = 137;  // Polygon
-productionChainIds[2] = 56;   // BSC
-productionChainIds[3] = 43114; // Avalanche
-
-_configureProduction(productionOwner, productionChainIds);
+        ├── 1.0.1-MyContract.json
+        └── 1.0.1-MyContract-timestamp.json  # Created when FORCE_DEPLOY=true
 ```
 
 ## Version Format Requirements
@@ -196,14 +193,19 @@ Contracts must implement `IVersionable` with the format `x.x.x-ContractName`:
 - ❌ `"MyContract-1.0.0"` (wrong order)
 - ❌ `"1.0.0"` (missing contract name)
 
-## Events
+## Troubleshooting
 
-The DeployHelper emits events for tracking:
+### "Standard JSON input already exists with different content"
 
-```solidity
-event ContractDeployed(string indexed version, address indexed contractAddress, string contractName);
-event OwnershipTransferred(address indexed contractAddress, address indexed newOwner);
-```
+This error occurs when the contract code has changed but you're trying to deploy with the same version. Solutions:
+
+1. **Update the version** in your contract (recommended)
+2. **Set FORCE_DEPLOY=true** in .env to override (use carefully)
+3. **Delete the existing JSON** if you're sure about the changes
+
+### "Skipping deployment, already deployed"
+
+This occurs when a contract with this version is already deployed on-chain. CREATE3 ensures deterministic addresses, so the same version will always deploy to the same address.
 
 ## Starter Repo
 Please refer to [deploy-helper-starter](https://github.com/EthSign/deploy-helper-starter)
@@ -211,8 +213,8 @@ Please refer to [deploy-helper-starter](https://github.com/EthSign/deploy-helper
 ## Dependencies
 
 - [forge-std](https://github.com/foundry-rs/forge-std)
-- [createx-forge](https://github.com/radeksvarz/createx-forge)
-- [solady](https://github.com/Vectorized/solady)
+- [createx-forge](https://github.com/radeksvarz/createx-forge) (included in script/CreateX/)
+- [solady](https://github.com/Vectorized/solady) (for Ownable)
 
 ## License
 

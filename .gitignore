@@ -18,3 +18,7 @@ deployments/
 
 # Node modules (if any)
 node_modules/
+
+# src & test script
+src/
+script/Counter.s.sol

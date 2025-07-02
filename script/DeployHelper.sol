@@ -25,10 +25,12 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
     string public finalJson;
     string public finalJsonLatest;
     string public unixTime;
+    bool internal _hasNewDeployments;
 
-    // Production configuration
-    address public productionOwner;
-    mapping(uint256 => bool) public isProductionChain;
+    // Environment variables
+    address internal _PROD_OWNER;
+    uint256[] internal _MAINNET_CHAIN_IDS;
+    bool internal _FORCE_DEPLOY;
 
     // Events
     event ContractDeployed(string indexed version, address indexed contractAddress, string contractName);
@@ -47,6 +49,11 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
      * @param subfolder The deployment subfolder for organizing deployments
      */
     function _setUp(string memory subfolder) internal withCreateX {
+        // Read environment variables from .env
+        _PROD_OWNER = vm.envAddress("PROD_OWNER");
+        _MAINNET_CHAIN_IDS = vm.envUint("MAINNET_CHAIN_IDS", ",");
+        _FORCE_DEPLOY = vm.envOr("FORCE_DEPLOY", false);
+
         unixTime = vm.toString(vm.unixTime());
 
         // Create necessary directories
@@ -56,7 +63,7 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
         inputs[2] = string.concat(vm.projectRoot(), "/deployments/", subfolder);
         vm.ffi(inputs);
 
-        inputs[2] = string.concat(vm.projectRoot(), "/deployments/verification/standard-json-inputs");
+        inputs[2] = string.concat(vm.projectRoot(), "/deployments/", subfolder, "/standard-json-inputs");
         vm.ffi(inputs);
 
         jsonPath = string.concat(
@@ -77,17 +84,6 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
         jsonObjKeyAll = "deploymentObjKeyAll";
     }
 
-    /**
-     * @notice Configure production settings for mainnet deployments
-     * @param _productionOwner Address to transfer ownership to on production chains
-     * @param _productionChainIds Array of chain IDs considered production chains
-     */
-    function _configureProduction(address _productionOwner, uint256[] memory _productionChainIds) internal {
-        productionOwner = _productionOwner;
-        for (uint256 i = 0; i < _productionChainIds.length; i++) {
-            isProductionChain[_productionChainIds[i]] = true;
-        }
-    }
 
     /**
      * @notice Deploy a contract using CREATE3 for deterministic addresses
@@ -95,7 +91,9 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
      * @return deployed The deployed contract address
      */
     function _deploy(bytes memory creationCode) internal returns (address deployed) {
-        (bool didDeploy, address deployedAddress) = __deploy(creationCode);
+        // Extract subfolder from jsonPath
+        string memory subfolder = _extractSubfolder();
+        (bool didDeploy, address deployedAddress) = __deploy(creationCode, subfolder);
         if (didDeploy) {
             // Contract was newly deployed
         }
@@ -109,7 +107,9 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
      * @return deployed The deployed contract address
      */
     function _deployWithSalt(bytes memory creationCode, string memory saltSuffix) internal returns (address deployed) {
-        (bool didDeploy, address deployedAddress) = __deployWithSalt(creationCode, saltSuffix);
+        // Extract subfolder from jsonPath
+        string memory subfolder = _extractSubfolder();
+        (bool didDeploy, address deployedAddress) = __deployWithSalt(creationCode, saltSuffix, subfolder);
         if (didDeploy) {
             // Contract was newly deployed
         }
@@ -121,13 +121,10 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
      * @dev Should be called at the end of deployment scripts
      */
     function _afterAll() internal {
-        if (bytes(finalJson).length > 0) {
+        if (_hasNewDeployments) {
             vm.writeJson(finalJson, jsonPath);
         }
-
-        if (bytes(finalJsonLatest).length > 0) {
-            vm.writeJson(finalJsonLatest, jsonPathLatest);
-        }
+        vm.writeJson(finalJsonLatest, jsonPathLatest);
     }
 
     /**
@@ -135,30 +132,38 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
      * @param instance The contract instance to check/transfer ownership
      */
     function _checkChainAndSetOwner(address instance) internal {
-        if (!isProductionChain[block.chainid]) {
+        bool isMainnet = false;
+        for (uint256 i = 0; i < _MAINNET_CHAIN_IDS.length; i++) {
+            if (block.chainid == _MAINNET_CHAIN_IDS[i]) {
+                isMainnet = true;
+                break;
+            }
+        }
+
+        if (!isMainnet) {
             console.log(unicode"✅[INFO] Testnet detected, skipping owner reassignment.");
             return;
         }
 
-        if (productionOwner == address(0)) {
+        if (_PROD_OWNER == address(0)) {
             console.log(unicode"⚠️[WARN] Production chain detected but no production owner configured.");
             return;
         }
 
-        if (Ownable(instance).owner() == productionOwner) {
+        if (Ownable(instance).owner() == _PROD_OWNER) {
             console.log(
-                unicode"✅[INFO] Owner already set to %s for %s, skipping reassignment.", productionOwner, instance
+                unicode"✅[INFO] Owner already set to %s for %s, skipping reassignment.", _PROD_OWNER, instance
             );
             return;
         }
 
         vm.broadcast();
-        Ownable(instance).transferOwnership(productionOwner);
+        Ownable(instance).transferOwnership(_PROD_OWNER);
         console.log(
-            unicode"✅[INFO] Production chain detected, owner reassigned to %s for %s.", productionOwner, instance
+            unicode"✅[INFO] Production chain detected, owner reassigned to %s for %s.", _PROD_OWNER, instance
         );
 
-        emit OwnershipTransferred(instance, productionOwner);
+        emit OwnershipTransferred(instance, _PROD_OWNER);
     }
 
     /**
@@ -190,25 +195,29 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
      * @return didDeploy Whether the contract was newly deployed
      * @return deployed The deployed contract address
      */
-    function __deploy(bytes memory creationCode) private returns (bool, address) {
+    function __deploy(bytes memory creationCode, string memory subfolder) private returns (bool, address) {
         (string memory name, string memory versionAndVariant) = _getNameVersionAndVariant(creationCode);
         address computed = computeCreate3Address(_getSalt(versionAndVariant), msg.sender);
         finalJsonLatest = vm.serializeAddress(jsonObjKeyAll, versionAndVariant, computed);
-
+        
         if (computed.code.length != 0) {
             console.log(unicode"⚠️[WARN] Skipping deployment, %s already deployed at %s", versionAndVariant, computed);
             return (false, computed);
         }
 
+        string memory standardJsonInput = _generateStandardJsonInput(name);
+        
+        _checkStandardJsonInput(versionAndVariant, standardJsonInput, subfolder);
+
         vm.startBroadcast();
         address deployed = create3(_getSalt(versionAndVariant), creationCode);
         vm.stopBroadcast();
-
+        
         require(computed == deployed, "Computed address mismatch");
         console.log(unicode"✅[INFO] %s deployed at %s", versionAndVariant, computed);
-
+        _hasNewDeployments = true;
         finalJson = vm.serializeAddress(jsonObjKeyDiff, versionAndVariant, computed);
-        _saveContractToStandardJsonInput(name, versionAndVariant);
+        _saveContractToStandardJsonInput(versionAndVariant, standardJsonInput, subfolder);
 
         emit ContractDeployed(versionAndVariant, deployed, name);
 
@@ -222,7 +231,7 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
      * @return didDeploy Whether the contract was newly deployed
      * @return deployed The deployed contract address
      */
-    function __deployWithSalt(bytes memory creationCode, string memory saltSuffix) private returns (bool, address) {
+    function __deployWithSalt(bytes memory creationCode, string memory saltSuffix, string memory subfolder) private returns (bool, address) {
         (string memory name, string memory versionAndVariant) = _getNameVersionAndVariant(creationCode);
         string memory saltKey = string.concat(versionAndVariant, "-", saltSuffix);
         address computed = computeCreate3Address(_getSaltWithSuffix(versionAndVariant, saltSuffix), msg.sender);
@@ -239,9 +248,12 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
 
         require(computed == deployed, "Computed address mismatch");
         console.log(unicode"✅[INFO] %s deployed at %s", saltKey, computed);
-
+        _hasNewDeployments = true;
         finalJson = vm.serializeAddress(jsonObjKeyDiff, saltKey, computed);
-        _saveContractToStandardJsonInput(name, saltKey);
+
+        string memory standardJsonInput = _generateStandardJsonInput(name);
+        _checkStandardJsonInput(saltKey, standardJsonInput, subfolder);
+        _saveContractToStandardJsonInput(saltKey, standardJsonInput, subfolder);
 
         emit ContractDeployed(saltKey, deployed, name);
 
@@ -288,21 +300,33 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
     }
 
     /**
-     * @notice Save contract verification JSON for Etherscan
+     * @notice Generate standard JSON input for contract verification
      * @param contractName The contract name
-     * @param versionAndVariant The version and variant string
+     * @return The standard JSON input string
      */
-    function _saveContractToStandardJsonInput(string memory contractName, string memory versionAndVariant) private {
+    function _generateStandardJsonInput(string memory contractName) private returns (string memory) {
         string[] memory inputs = new string[](5);
         inputs[0] = "forge";
         inputs[1] = "verify-contract";
         inputs[2] = "0x0000000000000000000000000000000000000000";
         inputs[3] = contractName;
         inputs[4] = "--show-standard-json-input";
-        string memory output = string(vm.ffi(inputs));
+        return string(vm.ffi(inputs));
+    }
 
+    /**
+     * @notice Check if standard JSON input already exists and matches
+     * @param versionAndVariant The version and variant string
+     * @param standardJsonInput The generated standard JSON input
+     * @param subfolder The deployment subfolder
+     */
+    function _checkStandardJsonInput(
+        string memory versionAndVariant,
+        string memory standardJsonInput,
+        string memory subfolder
+    ) private view {
         string memory outputPath = string.concat(
-            vm.projectRoot(), "/deployments/verification/standard-json-inputs/", versionAndVariant, ".json"
+            vm.projectRoot(), "/deployments/", subfolder, "/standard-json-inputs/", versionAndVariant, ".json"
         );
 
         if (vm.isFile(outputPath)) {
@@ -310,32 +334,80 @@ abstract contract DeployHelper is CreateXScript, IVersionable {
                 unicode"⏳[INFO] Verification file for %s already exists, checking for changes...", versionAndVariant
             );
             string memory existingOutput = vm.readFile(outputPath);
-            if (keccak256(abi.encodePacked(existingOutput)) == keccak256(abi.encodePacked(output))) {
-                console.log(
-                    unicode"✅[INFO] No changes detected, skipping writing verification JSON for %s", versionAndVariant
-                );
-                return;
-            } else {
-                console.log(
-                    unicode"⚠️[WARN] Changes detected, saving verification JSON for %s with current timestamp",
-                    versionAndVariant
-                );
-                outputPath = string.concat(
-                    vm.projectRoot(),
-                    "/deployments/verification/standard-json-inputs/",
-                    versionAndVariant,
-                    "-",
-                    unixTime,
-                    ".json"
-                );
+            if (keccak256(abi.encodePacked(existingOutput)) != keccak256(abi.encodePacked(standardJsonInput))) {
+                if (!_FORCE_DEPLOY) {
+                    revert(
+                        string.concat(
+                            unicode"⚠️[WARN] Standard JSON input for ",
+                            versionAndVariant,
+                            " already exists with different content. Set FORCE_DEPLOY=true to override."
+                        )
+                    );
+                } else {
+                    console.log(
+                        unicode"⚠️[WARN] FORCE_DEPLOY=true, proceeding with deployment despite different standard JSON input for %s",
+                        versionAndVariant
+                    );
+                }
             }
         }
+    }
 
-        console.log(unicode"✅[INFO] Standard JSON input for %s saved", versionAndVariant);
-        vm.writeFile(outputPath, output);
+    /**
+     * @notice Save contract verification JSON for Etherscan
+     * @param versionAndVariant The version and variant string
+     * @param standardJsonInput The standard JSON input to save
+     * @param subfolder The deployment subfolder
+     */
+    function _saveContractToStandardJsonInput(
+        string memory versionAndVariant,
+        string memory standardJsonInput,
+        string memory subfolder
+    ) private {
+        string memory outputPath = string.concat(
+            vm.projectRoot(), "/deployments/", subfolder, "/standard-json-inputs/", versionAndVariant, ".json"
+        );
+
+        if (vm.isFile(outputPath) && _FORCE_DEPLOY) {
+            outputPath = string.concat(
+                vm.projectRoot(),
+                "/deployments/",
+                subfolder,
+                "/standard-json-inputs/",
+                versionAndVariant,
+                "-",
+                unixTime,
+                ".json"
+            );
+            console.log(
+                unicode"✅[INFO] Standard JSON input for %s saved with timestamp due to FORCE_DEPLOY",
+                versionAndVariant
+            );
+        } else {
+            console.log(unicode"✅[INFO] Standard JSON input for %s saved", versionAndVariant);
+        }
+
+        vm.writeFile(outputPath, standardJsonInput);
+    }
+
+    /**
+     * @notice Extract subfolder from jsonPath
+     * @return The subfolder name
+     */
+    function _extractSubfolder() private view returns (string memory) {
+        // jsonPath format: {projectRoot}/deployments/{subfolder}/{chainid}-{host}-{timestamp}.json
+        strings.slice memory pathSlice = jsonPath.toSlice();
+        strings.slice memory delimiter = "/deployments/".toSlice();
+        
+        // Skip to after "/deployments/"
+        pathSlice.split(delimiter);
+        
+        // Now get the subfolder (everything before the next "/")
+        delimiter = "/".toSlice();
+        return pathSlice.split(delimiter).toString();
     }
 
     function version() external pure override returns (string memory) {
-        return "1.0.1-DeployHelper";
+        return "1.1.0-DeployHelper";
     }
 }
